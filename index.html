@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Text-to-Speech Web App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <meta name="theme-color" content="#1f2937" />
+  
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-start p-8">
+  <div class="w-full max-w-2xl space-y-6">
+    <h1 class="text-3xl font-bold text-center">🗣️ Text to Speech (Google TTS)</h1>
+
+    <div class="flex flex-col space-y-2">
+      <label class="font-semibold">🔑 API Key</label>
+      <input id="apiKey" type="text" placeholder="Enter Google TTS API Key"
+             class="p-2 rounded bg-gray-800 text-white w-full" />
+    </div>
+
+    <div class="flex flex-col space-y-2">
+      <label class="font-semibold">📝 Text</label>
+      <textarea id="textInput" rows="6" placeholder="Enter your text here..."
+                class="p-2 rounded bg-gray-800 text-white w-full"></textarea>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="font-semibold">🌐 Language Code</label>
+        <input id="language" type="text" value="uk-UA" class="p-2 rounded bg-gray-800 text-white w-full" />
+      </div>
+      <div>
+        <label class="font-semibold">🗣️ Voice (name)</label>
+        <input id="voice" type="text" value="uk-UA-Wavenet-A" class="p-2 rounded bg-gray-800 text-white w-full" />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="font-semibold">⚡ Speed (0.25–4.0)</label>
+        <input id="speed" type="number" step="0.1" value="1.0" class="p-2 rounded bg-gray-800 text-white w-full" />
+      </div>
+      <div>
+        <label class="font-semibold">🎚 Pitch (-20.0–20.0)</label>
+        <input id="pitch" type="number" step="0.1" value="0.0" class="p-2 rounded bg-gray-800 text-white w-full" />
+      </div>
+    </div>
+
+    <div class="flex space-x-4">
+      <button onclick="speakText()"
+              class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold">
+        🎤 Generate
+      </button>
+      <a id="downloadBtn" href="#" download="speech.mp3"
+         class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-bold hidden">
+        ⬇️ Download
+      </a>
+    </div>
+
+    <audio id="audioPlayer" controls class="w-full hidden mt-4"></audio>
+  </div>
+<script>
+  // Реєстрація Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(() => console.log('[SW] Registered'))
+      .catch(err => console.error('[SW] Failed:', err));
+  }
+</script>
+  <script>
+    // Зберігаємо API ключ локально
+    const apiInput = document.getElementById('apiKey');
+    apiInput.value = localStorage.getItem('tts_api_key') || '';
+    apiInput.addEventListener('input', () => {
+      localStorage.setItem('tts_api_key', apiInput.value);
+    });
+
+    async function speakText() {
+      const apiKey = document.getElementById('apiKey').value;
+      const text = document.getElementById('textInput').value;
+      const language = document.getElementById('language').value;
+      const voiceName = document.getElementById('voice').value;
+      const speed = parseFloat(document.getElementById('speed').value);
+      const pitch = parseFloat(document.getElementById('pitch').value);
+
+      if (!apiKey || !text) {
+        alert("Введи API ключ і текст.");
+        return;
+      }
+
+      const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
+
+      const body = {
+        input: { text },
+        voice: {
+          languageCode: language,
+          name: voiceName
+        },
+        audioConfig: {
+          audioEncoding: "MP3",
+          speakingRate: speed,
+          pitch: pitch
+        }
+      };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        alert("Помилка запиту: " + res.statusText);
+        return;
+      }
+
+      const data = await res.json();
+      const audioContent = data.audioContent;
+
+      const audioBlob = new Blob([Uint8Array.from(atob(audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const audio = document.getElementById('audioPlayer');
+      audio.src = audioUrl;
+      audio.classList.remove('hidden');
+      audio.play();
+
+      const downloadBtn = document.getElementById('downloadBtn');
+      downloadBtn.href = audioUrl;
+      downloadBtn.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
