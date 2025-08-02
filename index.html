@@ -61,10 +61,11 @@
 
     <audio id="audioPlayer" controls class="w-full hidden mt-4"></audio>
   </div>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/pwa-tts/service-worker.js', { scope: '/pwa-tts/' });
-}
+
   <script>
+    if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/pwa-tts/service-worker.js', { scope: '/pwa-tts/' });
+  }
     // Зберігаємо API ключ локально
     const apiInput = document.getElementById('apiKey');
     apiInput.value = localStorage.getItem('tts_api_key') || '';
